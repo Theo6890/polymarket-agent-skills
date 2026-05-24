@@ -44,33 +44,8 @@ Use this skill when the user asks about or needs to build:
 | Neg Risk CTF Exchange | `0xC5d563A36AE78145C45a50134d48A1215220f80a` |
 | Neg Risk Adapter | `0xd91E80cF2E7be2e162c6513ceD06f1dD0dA35296` |
 
-## Client Setup
+## Client Setup (Python — agent runtime)
 
-### TypeScript
-```typescript
-import { ClobClient, Side, OrderType } from "@polymarket/clob-client";
-import { Wallet } from "ethers"; // v5.8.0
-
-const HOST = "https://clob.polymarket.com";
-const CHAIN_ID = 137;
-const signer = new Wallet(process.env.PRIVATE_KEY);
-
-// Step 1: L1 — derive API credentials
-const tempClient = new ClobClient(HOST, CHAIN_ID, signer);
-const apiCreds = await tempClient.createOrDeriveApiKey();
-
-// Step 2: L2 — init trading client
-const client = new ClobClient(
-  HOST,
-  CHAIN_ID,
-  signer,
-  apiCreds,
-  2,                // signatureType: 0=EOA, 1=POLY_PROXY, 2=GNOSIS_SAFE
-  "FUNDER_ADDRESS"  // proxy wallet address from polymarket.com/settings
-);
-```
-
-### Python
 ```python
 from py_clob_client.client import ClobClient
 import os
@@ -94,6 +69,8 @@ client = ClobClient(
 )
 ```
 
+TypeScript variant: `typescript-reference.md`.
+
 ## Quick Reference: Order Types
 
 | Type | Behavior | Use Case |
@@ -115,27 +92,8 @@ client = ClobClient(
 | POLY_PROXY | `1` | Custom proxy wallet for Magic Link email/Google users who exported PK from Polymarket.com. |
 | GNOSIS_SAFE | `2` | Gnosis Safe multisig proxy wallet (most common). Use for any new or returning user. |
 
-## Core Pattern: Place an Order
+## Core Pattern: Place an Order (Python)
 
-### TypeScript
-```typescript
-const response = await client.createAndPostOrder(
-  {
-    tokenID: "TOKEN_ID",
-    price: 0.50,
-    size: 10,
-    side: Side.BUY,
-  },
-  {
-    tickSize: "0.01",  // from client.getTickSize(tokenID) or market object
-    negRisk: false,    // from client.getNegRisk(tokenID) or market object
-  },
-  OrderType.GTC
-);
-console.log(response.orderID, response.status);
-```
-
-### Python
 ```python
 from py_clob_client.clob_types import OrderArgs, OrderType
 from py_clob_client.order_builder.constants import BUY
@@ -148,20 +106,8 @@ response = client.create_and_post_order(
 print(response["orderID"], response["status"])
 ```
 
-## Core Pattern: Read Orderbook
+## Core Pattern: Read Orderbook (Python)
 
-### TypeScript
-```typescript
-// No auth needed
-const readClient = new ClobClient("https://clob.polymarket.com", 137);
-const book = await readClient.getOrderBook("TOKEN_ID");
-console.log("Best bid:", book.bids[0], "Best ask:", book.asks[0]);
-
-const mid = await readClient.getMidpoint("TOKEN_ID");
-const spread = await readClient.getSpread("TOKEN_ID");
-```
-
-### Python
 ```python
 read_client = ClobClient("https://clob.polymarket.com", chain_id=137)
 book = read_client.get_order_book("TOKEN_ID")
@@ -169,27 +115,9 @@ mid = read_client.get_midpoint("TOKEN_ID")
 spread = read_client.get_spread("TOKEN_ID")
 ```
 
-## Core Pattern: WebSocket Subscribe
+## WebSocket
 
-```typescript
-const ws = new WebSocket("wss://ws-subscriptions-clob.polymarket.com/ws/market");
-
-ws.onopen = () => {
-  ws.send(JSON.stringify({
-    type: "market",
-    assets_ids: ["TOKEN_ID"],
-    custom_feature_enabled: true,
-  }));
-  // Send PING every 10s to keep alive
-  setInterval(() => ws.send("PING"), 10_000);
-};
-
-ws.onmessage = (event) => {
-  if (event.data === "PONG") return;
-  const msg = JSON.parse(event.data);
-  // msg.event_type: "book" | "price_change" | "last_trade_price" | "tick_size_change" | "best_bid_ask" | "new_market" | "market_resolved"
-};
-```
+Full subscribe/heartbeat pattern lives in `websocket.md` (loaded on demand). TypeScript variant in `typescript-reference.md`.
 
 ## Reference files (load on demand)
 
@@ -202,3 +130,4 @@ Only read these when the task requires deeper detail on a specific topic:
 - **CTF operations** (split, merge, redeem, neg risk, token IDs): [ctf-operations.md](ctf-operations.md)
 - **Bridge** (deposits, withdrawals, supported chains/tokens, status): [bridge.md](bridge.md)
 - **Gasless transactions** (relayer client, wallet deployment, builder setup): [gasless.md](gasless.md)
+- **TypeScript variants** of the core patterns above: [typescript-reference.md](typescript-reference.md)
